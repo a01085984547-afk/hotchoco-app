@@ -2529,6 +2529,15 @@ async function disableSync(){
    분양완료 탭 (개체 + 해칭개체 중 상태='분양 완료'인 것 모아보기)
 ===================================================================== */
 
+let soldSort = 'saledate_desc';
+const SOLD_SORTERS = {
+  saledate_desc: (a,b)=>(b.saleDate||'').localeCompare(a.saleDate||''),
+  saledate_asc:  (a,b)=>(a.saleDate||'').localeCompare(b.saleDate||''),
+  price_desc: (a,b)=>(parseFloat(b.salePrice)||0)-(parseFloat(a.salePrice)||0),
+  price_asc:  (a,b)=>(parseFloat(a.salePrice)||0)-(parseFloat(b.salePrice)||0)
+};
+function setSoldSort(v){ soldSort = v; renderMainOnly(); }
+
 function getSoldRecords(){
   const list = [];
   state.individuals.forEach(i=>{
@@ -2551,13 +2560,20 @@ function getSoldRecords(){
       });
     }
   });
-  list.sort((a,b)=>(b.saleDate||'').localeCompare(a.saleDate||''));
+  list.sort(SOLD_SORTERS[soldSort] || SOLD_SORTERS.saledate_desc);
   return list;
 }
 
 function renderSoldTab(){
   const records = getSoldRecords();
   const totalAmount = records.reduce((sum,r)=>sum+(parseFloat(r.salePrice)||0),0);
+
+  const sortOptions = [
+    {v:'saledate_desc',l:'분양일 최신순'},
+    {v:'saledate_asc',l:'분양일 오래된순'},
+    {v:'price_desc',l:'가격 높은순'},
+    {v:'price_asc',l:'가격 낮은순'}
+  ];
 
   let html = `<div class="section-head"><h2>분양완료</h2></div>
   <div class="stat-grid">
@@ -2569,6 +2585,12 @@ function renderSoldTab(){
     html += `<div class="empty-state"><div class="dotrow"><span></span><span></span><span></span><span></span><span></span></div><p>아직 분양 완료된 개체가 없어요.<br>개체·해칭개체 상태를 '분양 완료'로 바꾸면 여기 모여요.</p></div>`;
     return html;
   }
+
+  html += `<div class="searchbar">
+    <select onchange="setSoldSort(this.value)" style="flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:13px;background:var(--surface);color:var(--ink-soft);">
+      ${sortOptions.map(o=>`<option value="${o.v}" ${o.v===soldSort?'selected':''}>${o.l}</option>`).join('')}
+    </select>
+  </div>`;
 
   records.forEach(r=>{
     const openFn = r.kind==='individual' ? `openIndividualForm('${r.id}')` : `openHatchlingForm('${r.id}')`;
